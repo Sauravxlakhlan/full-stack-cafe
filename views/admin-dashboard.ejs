@@ -1,0 +1,285 @@
+<%- include('partials/head') %>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+<style>
+    body { font-family: 'Plus Jakarta Sans', sans-serif; }
+    .status-badge-Preparing { background-color: #fff7ed; color: #c2410c; border: 1px solid #ffedd5; }
+    .status-badge-Ready { background-color: #f0fdf4; color: #15803d; border: 1px solid #dcfce7; }
+    .status-badge-Pending { background-color: #f8fafc; color: #64748b; border: 1px solid #e2e8f0; }
+    .status-badge-Completed { background-color: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; }
+    
+    .custom-scrollbar::-webkit-scrollbar { height: 4px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
+    
+    /* Animation for Modal */
+    .modal-animate { animation: fadeIn 0.2s ease-out; }
+    @keyframes fadeIn {
+        from { opacity: 0; transform: scale(0.95); }
+        to { opacity: 1; transform: scale(1); }
+    }
+</style>
+
+<body class="bg-[#fcfcfd] text-slate-900 min-h-screen">
+    <nav class="bg-white/80 backdrop-blur-md border-b border-slate-100 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+                <div class="w-10 h-10 bg-orange-600 rounded-xl flex items-center justify-center shadow-lg shadow-orange-200">
+                    <i class="fa-solid fa-utensils text-white"></i>
+                </div>
+                <span class="text-xl font-extrabold tracking-tight text-slate-900">Canteen Admin</span>
+            </div>
+            <div class="flex items-center gap-4">
+                <a href="/" class="text-sm font-bold text-slate-600 hover:text-orange-600 transition-colors">View Menu</a>
+                <button onclick="showLogoutModal()" class="text-sm font-bold text-slate-400 hover:text-red-500 transition-colors bg-transparent border-none cursor-pointer">Logout</button>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto p-6 md:p-10">
+        
+        <section class="mb-12">
+            <div class="flex items-center gap-3 mb-6">
+                <h2 class="text-2xl font-extrabold tracking-tight">Add New Dish</h2>
+                <div class="h-px flex-1 bg-slate-100"></div>
+            </div>
+            
+            <form action="/admin/add-product" method="POST" enctype="multipart/form-data" class="bg-white p-8 rounded-[2rem] border border-slate-200 shadow-sm">
+                <div class="grid grid-cols-1 md:grid-cols-12 gap-6">
+                    <div class="md:col-span-3">
+                        <label class="block text-[10px] font-black uppercase mb-2 ml-1 text-slate-400">Item Name</label>
+                        <input type="text" name="name" class="w-full px-5 py-3.5 rounded-2xl bg-slate-50 border border-slate-100 outline-none font-semibold focus:ring-2 focus:ring-orange-500/20 transition-all" required>
+                    </div>
+                    <div class="md:col-span-2">
+                        <label class="block text-[10px] font-black uppercase mb-2 ml-1 text-slate-400">Price ($)</label>
+                        <input type="number" step="0.01" name="price" class="w-full px-5 py-3.5 rounded-2xl bg-slate-50 border border-slate-100 outline-none font-semibold focus:ring-2 focus:ring-orange-500/20 transition-all" required>
+                    </div>
+                    <div class="md:col-span-2">
+                        <label class="block text-[10px] font-black uppercase mb-2 ml-1 text-slate-400">Initial Stock</label>
+                        <input type="number" name="stock" value="0" class="w-full px-5 py-3.5 rounded-2xl bg-slate-50 border border-slate-100 outline-none font-semibold focus:ring-2 focus:ring-orange-500/20 transition-all">
+                    </div>
+                    <div class="md:col-span-2">
+                        <label class="block text-[10px] font-black uppercase mb-2 ml-1 text-slate-400">Category</label>
+                        <select name="category" class="w-full px-5 py-3.5 rounded-2xl bg-slate-50 border border-slate-100 font-semibold outline-none focus:ring-2 focus:ring-orange-500/20 transition-all">
+                            <option>Breakfast</option>
+                            <option>Lunch</option>
+                            <option>Snacks</option>
+                            <option>Drinks</option>
+                        </select>
+                    </div>
+                    <div class="md:col-span-3">
+                        <label class="block text-[10px] font-black uppercase mb-2 ml-1 text-slate-400">Upload Image</label>
+                        <input type="file" name="imageFile" class="w-full text-xs text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-orange-50 file:text-orange-600 hover:file:bg-orange-100 cursor-pointer">
+                    </div>
+                </div>
+                <div class="mt-8 flex justify-end">
+                    <button type="submit" class="bg-slate-900 text-white font-bold px-10 py-4 rounded-2xl hover:bg-orange-600 transition-all transform active:scale-95 shadow-lg shadow-slate-200">
+                        Save Item
+                    </button>
+                </div>
+            </form>
+        </section>
+
+        <section class="mb-12 bg-white border border-slate-200 rounded-[2.5rem] shadow-sm overflow-hidden">
+            <div class="px-8 py-6 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
+                <h2 class="font-extrabold text-slate-900 text-lg">Inventory & Stock Control</h2>
+            </div>
+            <div class="overflow-x-auto custom-scrollbar">
+                <table class="w-full text-left">
+                    <thead>
+                        <tr class="text-[11px] uppercase tracking-widest text-slate-400 border-b border-slate-50">
+                            <th class="px-8 py-5">Dish</th>
+                            <th class="px-8 py-5">Current Stock</th>
+                            <th class="px-8 py-5 text-center">Visibility</th>
+                            <th class="px-8 py-5 text-right">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-50">
+                        <% menu.forEach(item => { %>
+                            <tr class="hover:bg-slate-50/50 transition-colors <%= item.stock <= 0 ? 'bg-red-50/20' : '' %>">
+                                <td class="px-8 py-6">
+                                    <div class="font-bold text-slate-900"><%= item.name %></div>
+                                    <% if(item.stock <= 0) { %>
+                                        <span class="text-[9px] font-black text-red-500 uppercase tracking-tighter">Out of Stock</span>
+                                    <% } else if (item.stock < 10) { %>
+                                        <span class="text-[9px] font-black text-orange-500 uppercase tracking-tighter">Low Stock</span>
+                                    <% } %>
+                                </td>
+                                
+                                <form action="/admin/update-stock" method="POST">
+                                    <input type="hidden" name="productId" value="<%= item._id %>">
+                                    <td class="px-8 py-6">
+                                        <input type="number" name="stock" value="<%= item.stock %>" 
+                                            class="w-24 px-3 py-2 rounded-xl font-bold border outline-none transition-all 
+                                            <%= item.stock < 10 ? 'border-orange-200 bg-orange-50' : 'bg-slate-50 border-slate-200' %> focus:border-orange-500">
+                                    </td>
+                                    
+                                    <td class="px-8 py-6 text-center">
+                                        <label class="relative inline-flex items-center cursor-pointer">
+                                            <input type="checkbox" name="isAvailable" value="true" class="sr-only peer" <%= item.isAvailable ? 'checked' : '' %>>
+                                            <div class="w-11 h-6 bg-slate-200 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-600"></div>
+                                        </label>
+                                    </td>
+                                    
+                                    <td class="px-8 py-6 text-right">
+                                        <button type="submit" class="text-[10px] font-black uppercase bg-slate-900 text-white px-5 py-2.5 rounded-xl hover:bg-orange-600 transition-all shadow-sm">
+                                            Update
+                                        </button>
+                                    </td>
+                                </form>
+                            </tr>
+                        <% }) %>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="px-8 py-5 bg-slate-50/50 border-t border-slate-100 flex items-center justify-between">
+                <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                    Page <%= currentPage %> of <%= totalPages %>
+                </span>
+                <div class="flex items-center gap-3">
+                    <% if (currentPage > 1) { %>
+                        <a href="/admin-dashboard?page=<%= currentPage - 1 %>&orderPage=<%= orderCurrentPage %>" class="px-5 py-2.5 bg-white border border-slate-200 rounded-xl text-[10px] font-black uppercase text-slate-600 hover:bg-slate-50 transition-all">
+                            <i class="fa-solid fa-arrow-left mr-2"></i> Previous
+                        </a>
+                    <% } %>
+                    <% if (currentPage < totalPages) { %>
+                        <a href="/admin-dashboard?page=<%= currentPage + 1 %>&orderPage=<%= orderCurrentPage %>" class="px-5 py-2.5 bg-white border border-slate-200 rounded-xl text-[10px] font-black uppercase text-slate-600 hover:bg-slate-50 transition-all">
+                            Next <i class="fa-solid fa-arrow-right ml-2"></i>
+                        </a>
+                    <% } %>
+                </div>
+            </div>
+        </section>
+
+        <section class="bg-white border border-slate-200 rounded-[2.5rem] shadow-sm overflow-hidden mb-12">
+            <div class="px-8 py-6 border-b border-slate-100 bg-slate-50/50">
+                <h2 class="font-extrabold text-slate-900 text-lg">Active Student Orders</h2>
+            </div>
+            <div class="overflow-x-auto custom-scrollbar">
+                <table class="w-full text-left">
+                    <thead>
+                        <tr class="text-[11px] uppercase tracking-widest text-slate-400 border-b border-slate-50">
+                            <th class="px-8 py-5">Student / Time</th>
+                            <th class="px-8 py-5">Order Items</th>
+                            <th class="px-8 py-5 text-center">Status</th>
+                            <th class="px-8 py-5 text-right">Update</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-50">
+                        <% activeOrders.forEach(order => { %>
+                            <tr class="hover:bg-slate-50/50 transition-colors">
+                                <td class="px-8 py-6">
+                                    <div class="font-bold text-slate-900"><%= order.userId ? order.userId.name : 'Guest User' %></div>
+                                    <div class="text-[10px] font-bold text-orange-600 bg-orange-50 inline-block px-2 py-0.5 rounded-md mt-1">
+                                        <i class="fa-regular fa-clock mr-1"></i> Pickup: <%= order.pickupTime %>
+                                    </div>
+                                </td>
+                                <td class="px-8 py-6 text-sm">
+                                    <% order.items.forEach(i => { %> 
+                                        <div class="text-slate-600 mb-0.5"><%= i.name %> <span class="text-slate-400 font-bold">x<%= i.qty %></span></div> 
+                                    <% }) %>
+                                </td>
+                                <td class="px-8 py-6 text-center">
+                                    <span class="status-badge-<%= order.status %> text-[10px] font-black uppercase px-3 py-1.5 rounded-lg inline-block min-w-[90px]">
+                                        <%= order.status %>
+                                    </span>
+                                </td>
+                                <td class="px-8 py-6 text-right">
+                                    <select onchange="updateStatus('<%= order._id %>', this.value)" 
+                                            class="bg-slate-900 text-white text-[10px] font-black uppercase px-4 py-2.5 rounded-xl outline-none hover:bg-orange-600 transition-colors cursor-pointer">
+                                        <option value="">Actions</option>
+                                        <option value="Preparing">Preparing</option>
+                                        <option value="Ready">Ready</option>
+                                        <option value="Completed">Mark Completed</option>
+                                    </select>
+                                </td>
+                            </tr>
+                        <% }) %>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="px-8 py-5 bg-slate-50/50 border-t border-slate-100 flex items-center justify-between">
+                <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                    Orders Page <%= orderCurrentPage %> of <%= orderTotalPages %>
+                </span>
+                <div class="flex items-center gap-3">
+                    <% if (orderCurrentPage > 1) { %>
+                        <a href="/admin-dashboard?page=<%= currentPage %>&orderPage=<%= orderCurrentPage - 1 %>" class="px-5 py-2.5 bg-white border border-slate-200 rounded-xl text-[10px] font-black uppercase text-slate-600 hover:bg-slate-50 transition-all">
+                            Previous
+                        </a>
+                    <% } %>
+                    <% if (orderCurrentPage < orderTotalPages) { %>
+                        <a href="/admin-dashboard?page=<%= currentPage %>&orderPage=<%= orderCurrentPage + 1 %>" class="px-5 py-2.5 bg-white border border-slate-200 rounded-xl text-[10px] font-black uppercase text-slate-600 hover:bg-slate-50 transition-all">
+                            Next
+                        </a>
+                    <% } %>
+                </div>
+            </div>
+
+            <% if (activeOrders.length === 0) { %>
+                <div class="p-20 text-center">
+                    <p class="font-bold text-slate-400">No active orders right now.</p>
+                </div>
+            <% } %>
+        </section>
+    </main>
+
+    <div id="logoutModal" class="fixed inset-0 z-[100] hidden">
+        <div class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onclick="hideLogoutModal()"></div>
+        <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-sm p-6">
+            <div class="bg-white rounded-[2.5rem] shadow-2xl p-8 text-center modal-animate">
+                <div class="w-16 h-16 bg-red-50 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                    <i class="fa-solid fa-right-from-bracket text-red-500 text-xl"></i>
+                </div>
+                <h3 class="text-xl font-extrabold text-slate-900 mb-2">Confirm Logout</h3>
+                <p class="text-slate-500 text-sm font-medium mb-8">Are you sure you want to end your session?</p>
+                <div class="flex flex-col gap-3">
+                    <a href="/logout" class="w-full bg-slate-900 text-white font-bold py-4 rounded-2xl hover:bg-red-600 transition-all shadow-lg">Yes, Logout</a>
+                    <button onclick="hideLogoutModal()" class="w-full bg-slate-50 text-slate-600 font-bold py-4 rounded-2xl hover:bg-slate-100 transition-all">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Modal Logic
+        function showLogoutModal() {
+            document.getElementById('logoutModal').classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+        }
+        function hideLogoutModal() {
+            document.getElementById('logoutModal').classList.add('hidden');
+            document.body.style.overflow = 'auto';
+        }
+
+        // Status Update Logic
+        // Inside your admin-dashboard.ejs script section
+async function updateStatus(orderId, newStatus) {
+    try {
+        const res = await fetch(`/admin/order-status/${orderId}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: newStatus })
+        });
+        const data = await res.json();
+        
+        if (data.success) {
+            // Optional: Show a success message to admin
+            console.log("Status updated & User notified via Socket");
+            
+            // Update the UI color immediately
+            const badge = document.querySelector(`#status-badge-${orderId}`);
+            if(badge) {
+                badge.innerText = newStatus;
+                badge.className = `px-2 py-0.5 rounded text-[10px] font-bold uppercase ${newStatus === 'Ready' ? 'bg-green-50 text-green-600' : 'bg-orange-50 text-orange-600'}`;
+            }
+        }
+    } catch (err) {
+        alert("Error updating status");
+    }
+}
+    </script>
+</body>

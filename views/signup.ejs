@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Join Canteen | Create Account</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+    </style>
+</head>
+<body class="bg-[#fdfcfb] text-slate-900 min-h-screen">
+
+    <div class="fixed top-[-5%] left-[-5%] w-[45%] h-[45%] bg-orange-100 rounded-full blur-[120px] opacity-50 pointer-events-none"></div>
+    <div class="fixed bottom-[-5%] right-[-5%] w-[40%] h-[40%] bg-blue-50 rounded-full blur-[120px] opacity-60 pointer-events-none"></div>
+
+    <div class="min-h-screen relative flex items-center justify-center p-6 py-12">
+        <div class="max-w-xl w-full relative">
+            
+            <div class="text-center mb-10">
+                <div class="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-tr from-orange-600 to-orange-400 rounded-2xl shadow-2xl shadow-orange-200 mb-6 -rotate-3">
+                    <i class="fa-solid fa-utensils text-white text-2xl"></i>
+                </div>
+                <h1 class="text-4xl font-extrabold tracking-tight text-slate-900 mb-2">Create Account</h1>
+                <p class="text-slate-500 font-medium">Join the exclusive campus food community.</p>
+            </div>
+
+            <div class="glass-card rounded-[2.5rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/50 p-8 md:p-12">
+                
+                <form action="/signup" method="POST" class="space-y-6">
+                    
+                    <div class="group">
+                        <label class="block text-[11px] font-extrabold uppercase tracking-[0.15em] text-slate-400 mb-2 ml-2 transition-colors group-focus-within:text-orange-600">Full Name</label>
+                        <div class="relative">
+                            <input type="text" name="name" placeholder="John Doe" 
+                                class="w-full pl-6 pr-12 py-4 rounded-2xl bg-white/50 border border-slate-100 focus:border-orange-500 focus:ring-0 focus:shadow-[0_0_20px_rgba(234,88,12,0.1)] outline-none transition-all placeholder:text-slate-300 font-semibold text-slate-700" required>
+                            <i class="fa-regular fa-user absolute right-6 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-orange-500 transition-colors"></i>
+                        </div>
+                    </div>
+
+                    <div class="group">
+                        <label class="block text-[11px] font-extrabold uppercase tracking-[0.15em] text-slate-400 mb-2 ml-2 transition-colors group-focus-within:text-orange-600">Email Address</label>
+                        <div class="relative">
+                            <input type="email" name="email" placeholder="name@college.edu" 
+                                class="w-full pl-6 pr-12 py-4 rounded-2xl bg-white/50 border border-slate-100 focus:border-orange-500 focus:ring-0 focus:shadow-[0_0_20px_rgba(234,88,12,0.1)] outline-none transition-all placeholder:text-slate-300 font-semibold text-slate-700" required>
+                            <i class="fa-regular fa-envelope absolute right-6 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-orange-500 transition-colors"></i>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="group">
+                            <label class="block text-[11px] font-extrabold uppercase tracking-[0.15em] text-slate-400 mb-2 ml-2 transition-colors group-focus-within:text-orange-600">College ID</label>
+                            <input type="text" name="collegeId" placeholder="2024CS101" 
+                                class="w-full px-6 py-4 rounded-2xl bg-white/50 border border-slate-100 focus:border-orange-500 focus:ring-0 focus:shadow-[0_0_20px_rgba(234,88,12,0.1)] outline-none transition-all placeholder:text-slate-300 font-semibold text-slate-700" required>
+                        </div>
+
+                        <div class="group">
+                            <label class="block text-[11px] font-extrabold uppercase tracking-[0.15em] text-slate-400 mb-2 ml-2 transition-colors group-focus-within:text-orange-600">Role</label>
+                            <div class="relative">
+                                <select name="role" class="w-full px-6 py-4 rounded-2xl bg-white/50 border border-slate-100 focus:border-orange-500 focus:ring-0 outline-none transition-all font-semibold text-slate-700 appearance-none cursor-pointer">
+                                    <option value="Student">Student</option>
+                                    <option value="Admin">Admin</option>
+                                </select>
+                                <i class="fa-solid fa-chevron-down absolute right-6 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="group">
+                        <label class="block text-[11px] font-extrabold uppercase tracking-[0.15em] text-slate-400 mb-2 ml-2 transition-colors group-focus-within:text-orange-600">Password</label>
+                        <div class="relative">
+                            <input type="password" name="password" placeholder="••••••••" 
+                                class="w-full pl-6 pr-12 py-4 rounded-2xl bg-white/50 border border-slate-100 focus:border-orange-500 focus:ring-0 focus:shadow-[0_0_20px_rgba(234,88,12,0.1)] outline-none transition-all placeholder:text-slate-300 font-semibold text-slate-700" required>
+                            <i class="fa-solid fa-lock absolute right-6 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-orange-500 transition-colors"></i>
+                        </div>
+                    </div>
+                    
+                    <button type="submit" 
+                        class="w-full bg-slate-900 text-white font-extrabold py-5 rounded-2xl shadow-xl shadow-slate-200 hover:bg-orange-600 hover:shadow-orange-100 transition-all transform hover:-translate-y-1 active:scale-[0.95] flex items-center justify-center gap-3 mt-4">
+                        Create Account
+                        <i class="fa-solid fa-user-plus text-sm"></i>
+                    </button>
+                </form>
+
+                <div class="mt-10 pt-8 border-t border-slate-100 text-center">
+                    <p class="text-slate-400 font-semibold text-sm">
+                        Member already? 
+                        <a href="/login" class="text-orange-600 font-extrabold hover:underline decoration-2 underline-offset-4 ml-1">
+                            Sign In
+                        </a>
+                    </p>
+                </div>
+            </div>
+
+            <p class="text-center text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-10">
+                Safe Payment • Secure Data • Fresh Meals
+            </p>
+        </div>
+    </div>
+
+</body>
+</html>

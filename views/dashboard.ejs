@@ -1,0 +1,304 @@
+<%- include('partials/head') %>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<script src="https://cdn.tailwindcss.com"></script>
+
+<style>
+    /* Animation for Modal */
+    .modal-animate { animation: fadeIn 0.2s ease-out; }
+    @keyframes fadeIn {
+        from { opacity: 0; transform: scale(0.95); }
+        to { opacity: 1; transform: scale(1); }
+    }
+    
+    /* Animation for Socket Toast */
+    .toast-enter { transform: translate(-50%, 100%); opacity: 0; }
+    .toast-active { transform: translate(-50%, 0); opacity: 1; }
+</style>
+
+<body class="bg-slate-50 font-sans min-h-screen">
+
+    <nav class="bg-white border-b border-gray-200 sticky top-0 z-30 px-6 py-4">
+        <div class="max-w-7xl mx-auto flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="bg-orange-600 w-10 h-10 rounded-lg flex items-center justify-center shadow-sm">
+                    <i class="fa-solid fa-utensils text-white"></i>
+                </div>
+                <span class="text-xl font-bold text-gray-900 tracking-tight">CANTEEN</span>
+            </div>
+
+            <div class="hidden md:flex items-center gap-1 bg-gray-100 p-1 rounded-xl">
+                <% ['All', 'Breakfast', 'Lunch', 'Drinks'].forEach(cat => { %>
+                    <a href="<%= cat === 'All' ? '/' : '/?category=' + cat %>" 
+                       class="px-4 py-2 rounded-lg text-sm font-semibold transition-all <%= activeCategory === cat ? 'bg-white text-orange-600 shadow-sm' : 'text-gray-500 hover:text-gray-800' %>">
+                        <%= cat %>
+                    </a>
+                <% }) %>
+            </div>
+
+            <div class="flex items-center gap-5">
+                <button onclick="togglePanel('orders-overlay', true)" class="text-sm font-bold text-gray-600 hover:text-orange-600 transition-colors">
+                    My Orders
+                </button>
+                
+                <button onclick="togglePanel('cart-overlay', true)" class="relative bg-orange-600 text-white flex items-center gap-2 px-4 py-2 rounded-lg hover:bg-orange-700 transition-all shadow-sm">
+                    <i class="fa-solid fa-cart-shopping"></i>
+                    <span class="text-sm font-bold">Cart</span>
+                    <span id="cart-count-badge" class="bg-white text-orange-600 text-[10px] w-5 h-5 flex items-center justify-center rounded-full font-bold">0</span>
+                </button>
+
+                <div class="h-6 w-[1px] bg-gray-200 mx-1"></div>
+                
+                <div class="flex items-center gap-4">
+                    <% if (user && user.name) { %>
+                        <span class="hidden sm:inline text-sm font-medium text-gray-700"><%= user.name %></span>
+                        <button onclick="showLogoutModal()" class="flex items-center gap-2 px-3 py-1.5 border border-red-200 text-red-600 text-xs font-bold rounded-lg hover:bg-red-50 transition-colors">
+                            <i class="fa-solid fa-power-off"></i> Logout
+                        </button>
+                    <% } else { %>
+                        <a href="/login" class="bg-orange-600 text-white px-5 py-2 rounded-lg text-sm font-bold hover:bg-orange-700 transition-all">
+                            Login
+                        </a>
+                    <% } %>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto p-6 md:p-10">
+        <header class="mb-10 flex flex-col md:flex-row md:items-end justify-between gap-4">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-900 capitalize"><%= activeCategory %> Menu</h1>
+                <p class="text-gray-500 text-sm mt-1">Ready for fresh food?</p>
+            </div>
+
+            <div class="relative w-full md:w-72">
+                <i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                <input type="text" id="food-search" oninput="filterFood()" placeholder="Search current page..." 
+                       class="w-full pl-11 pr-4 py-2 bg-white border border-gray-200 rounded-xl outline-none focus:border-orange-500 transition-all shadow-sm">
+            </div>
+        </header>
+
+        <div id="menu-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <% if (menu.length > 0) { %>
+                <% menu.forEach(item => { %>
+                    <% const isUnavailable = item.stock <= 0 || item.isAvailable === false; %>
+                    <div class="food-card relative bg-white rounded-2xl overflow-hidden border border-gray-200 shadow-sm transition-all <%= isUnavailable ? 'grayscale opacity-75' : 'hover:shadow-md' %>" data-name="<%= item.name.toLowerCase() %>">
+                        <% if (isUnavailable) { %>
+                            <div class="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
+                                <span class="bg-red-600 text-white text-[10px] font-black uppercase px-3 py-1 shadow-xl rotate-[-12deg] border-2 border-white">Sold Out</span>
+                            </div>
+                        <% } %>
+                        <img src="<%= item.image %>" class="w-full h-40 object-cover" onerror="this.src='https://placehold.co/400x300?text=Food'">
+                        <div class="p-5">
+                            <div class="flex justify-between items-start mb-2">
+                                <div>
+                                    <h3 class="font-bold text-gray-800"><%= item.name %></h3>
+                                    <span class="text-[10px] text-gray-400 uppercase font-bold tracking-wider"><%= item.category %></span>
+                                </div>
+                                <p class="text-lg font-bold text-gray-900">$<%= item.price %></p>
+                            </div>
+                            <button onclick="addToCart('<%= item._id %>', '<%= item.name %>', '<%= item.price %>')" 
+                                    class="w-full mt-4 py-2 <%= isUnavailable ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-slate-900 text-white hover:bg-orange-600' %> text-sm font-bold rounded-lg transition-colors"
+                                    <%= isUnavailable ? 'disabled' : '' %>>
+                                <%= isUnavailable ? 'Unavailable' : 'Add to Cart' %>
+                            </button>
+                        </div>
+                    </div>
+                <% }) %>
+            <% } else { %>
+                <div class="col-span-full py-20 text-center text-gray-400">No items found.</div>
+            <% } %>
+        </div>
+    </main>
+
+    <div id="socket-toast" class="fixed bottom-10 left-1/2 -translate-x-1/2 z-[100] hidden toast-enter transition-all duration-500">
+        <div class="bg-slate-900 text-white px-8 py-5 rounded-3xl shadow-2xl flex items-center gap-5 border border-orange-500/50 backdrop-blur-md">
+            <div class="w-12 h-12 bg-orange-600 rounded-2xl flex items-center justify-center shadow-lg animate-bounce">
+                <i class="fa-solid fa-bell text-xl"></i>
+            </div>
+            <div>
+                <p id="toast-title" class="font-black text-sm tracking-tight uppercase">Order Update</p>
+                <p id="toast-body" class="text-xs text-gray-400 font-medium">Your status has been updated.</p>
+            </div>
+        </div>
+    </div>
+
+    <%- include('partials/overlays') %> <script src="/socket.io/socket.io.js"></script>
+    <script>
+        // --- 1. SOCKET.IO LOGIC ---
+        const socket = io();
+
+        <% if (user && user.id) { %>
+            // Join private room based on user ID
+            socket.emit('join', '<%= user.id %>');
+
+            // Listen for status updates
+            socket.on('orderUpdate', (data) => {
+                const toast = document.getElementById('socket-toast');
+                const title = document.getElementById('toast-title');
+                const body = document.getElementById('toast-body');
+
+                // Update text
+                title.innerText = `Order Status: ${data.status}`;
+                body.innerText = `Your order #${data.orderId} is now ${data.status.toLowerCase()}.`;
+
+                // Play notification sound
+                new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3').play().catch(e => console.log('Audio block'));
+
+                // Show with animation
+                toast.classList.remove('hidden');
+                setTimeout(() => {
+                    toast.classList.add('toast-active');
+                }, 50);
+
+                // Auto-hide after 6 seconds
+                setTimeout(() => {
+                    toast.classList.remove('toast-active');
+                    setTimeout(() => toast.classList.add('hidden'), 500);
+                }, 6000);
+            });
+        <% } %>
+
+        // --- 2. MODAL & PANEL CONTROLS ---
+        function showLogoutModal() {
+            document.getElementById('logoutModal').classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+        }
+        function hideLogoutModal() {
+            document.getElementById('logoutModal').classList.add('hidden');
+            document.body.style.overflow = 'auto';
+        }
+
+        function togglePanel(id, show) {
+            const overlay = document.getElementById(id);
+            const panel = overlay.querySelector('div');
+            if (show) {
+                overlay.classList.remove('hidden');
+                setTimeout(() => { 
+                    overlay.classList.add('opacity-100'); 
+                    panel.classList.remove('translate-x-full'); 
+                }, 10);
+            } else {
+                overlay.classList.remove('opacity-100');
+                panel.classList.add('translate-x-full');
+                setTimeout(() => overlay.classList.add('hidden'), 300);
+            }
+        }
+
+        // --- 3. CART & FILTER LOGIC ---
+        let cart = [];
+        
+        function filterFood() {
+            const term = document.getElementById('food-search').value.toLowerCase();
+            document.querySelectorAll('.food-card').forEach(card => {
+                const name = card.dataset.name;
+                card.style.display = name.includes(term) ? 'block' : 'none';
+            });
+        }
+
+        function addToCart(id, name, price) {
+            const existing = cart.find(i => i.id === id);
+            if(existing) { existing.qty++; } 
+            else { cart.push({ id, name, price: parseFloat(price), qty: 1 }); }
+            updateCartUI();
+        }
+
+        function changeQty(id, delta) {
+            const item = cart.find(i => i.id === id);
+            if(item) {
+                item.qty += delta;
+                if(item.qty <= 0) cart = cart.filter(i => i.id !== id);
+                updateCartUI();
+            }
+        }
+
+        function updateCartUI() {
+            const container = document.getElementById('cart-container');
+            const totalEl = document.getElementById('cart-total');
+            const badge = document.getElementById('cart-count-badge');
+            badge.innerText = cart.reduce((s, i) => s + i.qty, 0);
+
+            if(cart.length === 0) {
+                container.innerHTML = `<div class="text-center py-20 text-gray-300 font-bold">Cart is empty</div>`;
+                totalEl.innerText = '$0.00';
+                return;
+            }
+
+            let total = 0;
+            container.innerHTML = cart.map(item => {
+                total += item.price * item.qty;
+                return `
+                    <div class="flex items-center gap-3 bg-white p-3 rounded-lg border border-gray-100 shadow-sm">
+                        <div class="flex-1">
+                            <p class="font-bold text-sm text-gray-800">${item.name}</p>
+                            <p class="text-orange-600 font-bold text-xs">$${item.price.toFixed(2)}</p>
+                        </div>
+                        <div class="flex items-center gap-2 border rounded-md p-1">
+                            <button onclick="changeQty('${item.id}', -1)" class="w-6 h-6 hover:bg-gray-50 text-gray-500">-</button>
+                            <span class="text-xs font-bold w-4 text-center">${item.qty}</span>
+                            <button onclick="changeQty('${item.id}', 1)" class="w-6 h-6 hover:bg-gray-50 text-gray-500">+</button>
+                        </div>
+                    </div>`;
+            }).join('');
+            totalEl.innerText = `$${total.toFixed(2)}`;
+        }
+
+        async function checkout() {
+            const isLoggedIn = <%= (user && user.name) ? 'true' : 'false' %>;
+            if (!isLoggedIn) {
+                alert("Please login to place your order!");
+                window.location.href = '/login';
+                return;
+            }
+
+            const time = document.getElementById('pickup-time').value;
+            if(!time || cart.length === 0) return alert("Select time and items!");
+            
+            const orderData = {
+                items: cart.map(i => ({ productId: i.id, name: i.name, qty: i.qty, price: i.price })),
+                totalAmount: cart.reduce((s, i) => s + (i.price * i.qty), 0),
+                pickupTime: time
+            };
+
+            try {
+                const res = await fetch('/place-order', { 
+                    method: 'POST', 
+                    headers: { 'Content-Type': 'application/json' }, 
+                    body: JSON.stringify(orderData) 
+                });
+                const data = await res.json();
+                if(data.success) { 
+                    alert("Order Placed!");
+                    location.reload(); 
+                } else { 
+                    alert(data.message); 
+                }
+            } catch (err) { alert("Network Error."); }
+        }
+
+        async function handleFastReorder(btn) {
+            const isLoggedIn = <%= (user && user.name) ? 'true' : 'false' %>;
+            if (!isLoggedIn) return (window.location.href = '/login');
+
+            const items = JSON.parse(btn.getAttribute('data-items'));
+            const total = btn.getAttribute('data-total');
+            const time = prompt("Enter Pickup Time (HH:MM):", "12:00");
+            if (!time) return;
+
+            const res = await fetch('/place-order', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    items: items.map(i => ({ productId: i.productId || i._id, name: i.name, qty: i.qty, price: parseFloat(i.price) })), 
+                    totalAmount: parseFloat(total), 
+                    pickupTime: time 
+                })
+            });
+            const data = await res.json();
+            if (data.success) {
+                alert("Re-order successful!");
+                location.reload();
+            }
+        }
+    </script>
+</body>
