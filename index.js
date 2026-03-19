@@ -5,37 +5,47 @@ const path = require('path');
 const cookieParser = require('cookie-parser');
 const jwt = require('jsonwebtoken');
 const multer = require('multer');
-const http = require('http'); // 1. Import http
-const { Server } = require('socket.io'); // 2. Import Socket.io
+const http = require('http');
+const fs = require('fs'); // Added for folder check
+const { Server } = require('socket.io');
 
 const Product = require('./models/Product');
 const Order = require('./models/Order'); 
 const authRoutes = require('./routes/authRoutes');
 
 const app = express();
-const server = http.createServer(app); // 3. Create HTTP server
-const io = new Server(server); // 4. Initialize Socket.io
+const server = http.createServer(app);
+const io = new Server(server);
 
 const JWT_SECRET = process.env.JWT_SECRET || 'canteen_secret_789';
 
-// 5. Socket.io Connection Logic
+// --- INITIAL SETUP ---
+
+// Ensure the upload directory exists or Multer will fail
+const uploadDir = path.join(__dirname, 'public/images');
+if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+// Socket.io Connection Logic
 io.on('connection', (socket) => {
-    // When a user logs in, they join a private room based on their User ID
     socket.on('join', (userId) => {
         socket.join(userId);
         console.log(`User joined room: ${userId}`);
     });
 });
 
-// Middleware to make 'io' accessible in routes
 app.set('socketio', io);
 
-// Storage setup
+// Storage setup for Product Images
 const storage = multer.diskStorage({
     destination: (req, file, cb) => cb(null, 'public/images'),
     filename: (req, file, cb) => cb(null, Date.now() + '-' + file.originalname)
 });
-const upload = multer({ storage: storage });
+const upload = multer({ 
+    storage: storage,
+    limits: { fileSize: 5 * 1024 * 1024 } // 5MB limit
+});
 
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
@@ -48,28 +58,21 @@ mongoose.connect(process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/canteenDB')
     .then(() => console.log('✅ Connected to MongoDB'))
     .catch(err => console.error('❌ Connection Error:', err));
 
-// Middlewares
+// --- MIDDLEWARES ---
+
 const isAdmin = (req, res, next) => {
     const token = req.cookies.token;
-    if (!token) {
-        if (req.xhr || req.headers.accept.indexOf('json') > -1) {
-            return res.status(401).json({ success: false, message: "Unauthorized: Please login" });
-        }
-        return res.redirect('/login');
-    }
+    if (!token) return res.redirect('/login');
     try {
         const decoded = jwt.verify(token, JWT_SECRET);
         if (decoded && decoded.role.toLowerCase() === 'admin') { 
             req.user = decoded;
             next();
         } else {
-            res.status(403).json({ success: false, message: "Not an admin" });
+            res.status(403).send("Access Denied: Admins Only");
         }
     } catch (err) {
         res.clearCookie('token');
-        if (req.xhr || req.headers.accept.indexOf('json') > -1) {
-            return res.status(401).json({ success: false, message: "Session expired" });
-        }
         res.redirect('/login');
     }
 };
@@ -87,7 +90,9 @@ const isLoggedIn = (req, res, next) => {
 
 app.use('/', authRoutes);
 
-// User Dashboard
+// --- ROUTES ---
+
+// 1. User Dashboard
 app.get('/', async (req, res) => {
     try {
         const activeCategory = req.query.category || 'All';
@@ -108,21 +113,20 @@ app.get('/', async (req, res) => {
     } catch (err) { res.status(500).send("Error loading dashboard"); }
 });
 
-// Admin Dashboard - PAGINATED
+// 2. Admin Dashboard
 app.get('/admin-dashboard', isAdmin, async (req, res) => {
     try {
-        const pPage = parseInt(req.query.pPage) || 1;
-        const pLimit = 3;
+        const pPage = parseInt(req.query.page) || 1; 
+        const pLimit = 5; 
         const pSkip = (pPage - 1) * pLimit;
         const totalProducts = await Product.countDocuments();
 
-        const oPage = parseInt(req.query.oPage) || 1;
-        const oLimit = 4;
+        const oPage = parseInt(req.query.orderPage) || 1;
+        const oLimit = 5;
         const oSkip = (oPage - 1) * oLimit;
         const totalOrdersCount = await Order.countDocuments({ status: { $ne: 'Completed' } });
 
         const products = await Product.find().skip(pSkip).limit(pLimit);
-
         const activeOrders = await Order.find({ status: { $ne: 'Completed' } })
             .populate('userId', 'name')
             .sort({ createdAt: -1 })
@@ -132,10 +136,10 @@ app.get('/admin-dashboard', isAdmin, async (req, res) => {
         res.render('admin-dashboard', { 
             menu: products,
             activeOrders,
-            pCurrentPage: pPage,
-            pTotalPages: Math.ceil(totalProducts / pLimit),
-            oCurrentPage: oPage,
-            oTotalPages: Math.ceil(totalOrdersCount / oLimit),
+            currentPage: pPage,
+            totalPages: Math.ceil(totalProducts / pLimit),
+            orderCurrentPage: oPage,
+            orderTotalPages: Math.ceil(totalOrdersCount / oLimit),
             error: null 
         });
     } catch (err) { 
@@ -143,43 +147,106 @@ app.get('/admin-dashboard', isAdmin, async (req, res) => {
     }
 });
 
-// --- UPDATED: Admin Order Status with Socket Emit ---
+// 3. Add New Product (REPAIRED ROUTE)
+// --- ADMIN ROUTES ---
+
+// 1. Ensure the route matches the form action: /admin/add-product
+app.post('/admin/add-product', isAdmin, (req, res) => {
+    // 2. Manually invoke multer here. 
+    // 'imageFile' MUST match the 'name' attribute in your <input type="file">
+    upload.single('imageFile')(req, res, async (err) => {
+        if (err) {
+            console.error("Multer Error:", err);
+            return res.status(500).send("Upload Error");
+        }
+
+        // 3. AFTER upload.single runs, req.body is now populated!
+        try {
+            const { name, price, stock, category } = req.body;
+
+            // Debugging: If this is still empty, check your EJS form tags
+            console.log("Parsed Body:", req.body); 
+
+            if (!name || !price) {
+                return res.status(400).send("Name and Price are required.");
+            }
+
+            const imagePath = req.file ? `/images/${req.file.filename}` : '/images/default.png';
+
+            const newProduct = new Product({
+                name,
+                price: parseFloat(price),
+                stock: parseInt(stock) || 0,
+                category,
+                image: imagePath,
+                isAvailable: true
+            });
+
+            await newProduct.save();
+            res.redirect('/admin-dashboard');
+        } catch (dbErr) {
+            console.error("Database Error:", dbErr);
+            res.status(500).send("Database Error");
+        }
+    });
+});
+
+// 4. Update Stock & Availability
+app.post('/admin/update-stock', isAdmin, async (req, res) => {
+    try {
+        const { productId, stock, isAvailable } = req.body;
+        await Product.findByIdAndUpdate(productId, {
+            stock: parseInt(stock),
+            isAvailable: isAvailable === 'true' || isAvailable === 'on' 
+        });
+        res.redirect('/admin-dashboard');
+    } catch (err) {
+        res.status(500).send("Error updating stock");
+    }
+});
+
+// 5. Update Order Status
 app.post('/admin/order-status/:id', isAdmin, async (req, res) => {
     try {
         const { status } = req.body; 
         const order = await Order.findByIdAndUpdate(req.params.id, { status: status }, { new: true });
         
-        // 6. Trigger live notification
         const io = req.app.get('socketio');
-        io.to(order.userId.toString()).emit('orderUpdate', {
-            orderId: order._id.toString().slice(-6), // Send last 6 digits of ID
-            status: status
-        });
+        if (order && order.userId) {
+            io.to(order.userId.toString()).emit('orderUpdate', {
+                orderId: order._id.toString().slice(-6),
+                status: status
+            });
+        }
 
         res.json({ success: true });
     } catch (err) { res.status(500).json({ success: false }); }
 });
 
+// 6. Place Order
 app.post('/place-order', isLoggedIn, async (req, res) => {
     try {
         const { items, totalAmount, pickupTime } = req.body;
+        
         for (const item of items) {
             const product = await Product.findById(item.productId);
-            if (!product || product.stock < item.qty || product.isAvailable === false) {
-                return res.status(400).json({ success: false, message: `${item.name} is out of stock` });
+            if (!product || product.stock < item.qty || !product.isAvailable) {
+                return res.status(400).json({ success: false, message: `${item.name} is unavailable` });
             }
         }
+
         const order = new Order({ 
             userId: req.user.id, items, totalAmount, pickupTime, status: 'Pending'
         });
         await order.save();
+
         for (const item of items) {
             await Product.findByIdAndUpdate(item.productId, { $inc: { stock: -item.qty } });
         }
+
         res.json({ success: true });
     } catch (err) { res.status(500).json({ success: false }); }
 });
 
 const PORT = process.env.PORT || 5000;
-// 7. Use server.listen instead of app.listen
 server.listen(PORT, () => console.log(`🚀 Server running: http://localhost:${PORT}`));

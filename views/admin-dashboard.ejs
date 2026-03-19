@@ -5,6 +5,7 @@
 
 <style>
     body { font-family: 'Plus Jakarta Sans', sans-serif; }
+    /* Status Badge Styles */
     .status-badge-Preparing { background-color: #fff7ed; color: #c2410c; border: 1px solid #ffedd5; }
     .status-badge-Ready { background-color: #f0fdf4; color: #15803d; border: 1px solid #dcfce7; }
     .status-badge-Pending { background-color: #f8fafc; color: #64748b; border: 1px solid #e2e8f0; }
@@ -13,7 +14,6 @@
     .custom-scrollbar::-webkit-scrollbar { height: 4px; }
     .custom-scrollbar::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
     
-    /* Animation for Modal */
     .modal-animate { animation: fadeIn 0.2s ease-out; }
     @keyframes fadeIn {
         from { opacity: 0; transform: scale(0.95); }
@@ -169,7 +169,7 @@
                     </thead>
                     <tbody class="divide-y divide-slate-50">
                         <% activeOrders.forEach(order => { %>
-                            <tr class="hover:bg-slate-50/50 transition-colors">
+                            <tr class="hover:bg-slate-50/50 transition-colors" id="order-row-<%= order._id %>">
                                 <td class="px-8 py-6">
                                     <div class="font-bold text-slate-900"><%= order.userId ? order.userId.name : 'Guest User' %></div>
                                     <div class="text-[10px] font-bold text-orange-600 bg-orange-50 inline-block px-2 py-0.5 rounded-md mt-1">
@@ -182,7 +182,7 @@
                                     <% }) %>
                                 </td>
                                 <td class="px-8 py-6 text-center">
-                                    <span class="status-badge-<%= order.status %> text-[10px] font-black uppercase px-3 py-1.5 rounded-lg inline-block min-w-[90px]">
+                                    <span id="status-badge-<%= order._id %>" class="status-badge-<%= order.status %> text-[10px] font-black uppercase px-3 py-1.5 rounded-lg inline-block min-w-[90px]">
                                         <%= order.status %>
                                     </span>
                                 </td>
@@ -190,8 +190,8 @@
                                     <select onchange="updateStatus('<%= order._id %>', this.value)" 
                                             class="bg-slate-900 text-white text-[10px] font-black uppercase px-4 py-2.5 rounded-xl outline-none hover:bg-orange-600 transition-colors cursor-pointer">
                                         <option value="">Actions</option>
-                                        <option value="Preparing">Preparing</option>
-                                        <option value="Ready">Ready</option>
+                                        <option value="Preparing" <%= order.status === 'Preparing' ? 'selected' : '' %>>Preparing</option>
+                                        <option value="Ready" <%= order.status === 'Ready' ? 'selected' : '' %>>Ready</option>
                                         <option value="Completed">Mark Completed</option>
                                     </select>
                                 </td>
@@ -237,7 +237,7 @@
                 <h3 class="text-xl font-extrabold text-slate-900 mb-2">Confirm Logout</h3>
                 <p class="text-slate-500 text-sm font-medium mb-8">Are you sure you want to end your session?</p>
                 <div class="flex flex-col gap-3">
-                    <a href="/logout" class="w-full bg-slate-900 text-white font-bold py-4 rounded-2xl hover:bg-red-600 transition-all shadow-lg">Yes, Logout</a>
+                    <a href="/logout" class="w-full bg-slate-900 text-white font-bold py-4 rounded-2xl hover:bg-red-600 transition-all shadow-lg text-center">Yes, Logout</a>
                     <button onclick="hideLogoutModal()" class="w-full bg-slate-50 text-slate-600 font-bold py-4 rounded-2xl hover:bg-slate-100 transition-all">Cancel</button>
                 </div>
             </div>
@@ -256,30 +256,35 @@
         }
 
         // Status Update Logic
-        // Inside your admin-dashboard.ejs script section
-async function updateStatus(orderId, newStatus) {
-    try {
-        const res = await fetch(`/admin/order-status/${orderId}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ status: newStatus })
-        });
-        const data = await res.json();
-        
-        if (data.success) {
-            // Optional: Show a success message to admin
-            console.log("Status updated & User notified via Socket");
+        async function updateStatus(orderId, newStatus) {
+            if(!newStatus) return;
             
-            // Update the UI color immediately
-            const badge = document.querySelector(`#status-badge-${orderId}`);
-            if(badge) {
-                badge.innerText = newStatus;
-                badge.className = `px-2 py-0.5 rounded text-[10px] font-bold uppercase ${newStatus === 'Ready' ? 'bg-green-50 text-green-600' : 'bg-orange-50 text-orange-600'}`;
+            try {
+                const res = await fetch(`/admin/order-status/${orderId}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ status: newStatus })
+                });
+                const data = await res.json();
+                
+                if (data.success) {
+                    // If marked completed, reload or remove the row
+                    if(newStatus === 'Completed') {
+                        return window.location.reload(); 
+                    }
+                    
+                    // Update the badge UI color and text
+                    const badge = document.getElementById(`status-badge-${orderId}`);
+                    if(badge) {
+                        badge.innerText = newStatus;
+                        // Resets class and applies new status class
+                        badge.className = `status-badge-${newStatus} text-[10px] font-black uppercase px-3 py-1.5 rounded-lg inline-block min-w-[90px]`;
+                    }
+                }
+            } catch (err) {
+                console.error(err);
+                alert("Error updating status");
             }
         }
-    } catch (err) {
-        alert("Error updating status");
-    }
-}
     </script>
 </body>
